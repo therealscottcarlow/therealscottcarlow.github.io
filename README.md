@@ -76,11 +76,27 @@ Your content goes here...
 
 ## Deployment
 
-This site can be deployed to any static hosting service:
+### GitHub Pages Deployment (Root Site)
+
+This site is configured for deployment as a GitHub User Site (at the root domain):
+
+1. Create a repository named exactly `yourusername.github.io` (replace with your GitHub username)
+
+2. Update `astro.config.mjs` with your GitHub username:
+   ```js
+   site: 'https://yourusername.github.io',
+   ```
+
+3. The GitHub workflow at `.github/workflows/deploy.yml` automatically builds and deploys the site when changes are pushed to the main branch.
+
+4. Enable GitHub Pages in your repository settings and select the "GitHub Actions" source.
+
+### Other Hosting Options
+
+This site can also be deployed to any static hosting service:
 
 - Netlify
 - Vercel 
-- GitHub Pages
 - Cloudflare Pages
 - Any static hosting provider
 

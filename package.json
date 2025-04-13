@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "build:github": "astro build --site https://yourusername.github.io"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.2.3",

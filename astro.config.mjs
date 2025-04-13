@@ -7,7 +7,7 @@ import tailwind from '@astrojs/tailwind';
 // https://astro.build/config
 export default defineConfig({
 	// For a GitHub user site, use the format: https://username.github.io
-	site: 'https://yourusername.github.io',
+	site: 'https://therealscottcarlow.github.io',
 	
 	// No base path needed for username.github.io repositories
 	// base: '/', // Commented out as it's the default

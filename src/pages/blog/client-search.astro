@@ -1,0 +1,294 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+import { getCollection } from 'astro:content';
+
+// Get all posts to make available to client-side JavaScript
+const allPosts = await getCollection('blog');
+
+// Transform posts to a simplified format for client-side use
+const postsForClient = allPosts.map(post => ({
+  id: post.id,
+  title: post.data.title,
+  description: post.data.description,
+  date: post.data.pubDate.toISOString(),
+  tags: post.data.tags || [],
+  body: post.body,
+  url: `/blog/${post.id}/`,
+  image: post.data.heroImage
+}));
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <BaseHead title="Client-side Search" description="Search blog posts using JavaScript" />
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    .search-box {
+      max-width: 600px;
+      margin: 0 auto 2rem auto;
+      text-align: center;
+    }
+    .search-form {
+      display: flex;
+      margin-top: 1rem;
+    }
+    .search-input {
+      flex: 1;
+      padding: 0.8rem;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+    }
+    .search-button {
+      padding: 0.8rem 1.5rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+    }
+    .results-heading {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+    .post-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .post-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .post-image {
+      height: 200px;
+      background-color: var(--accent-light);
+      background-position: center;
+      background-size: cover;
+    }
+    .post-content {
+      padding: 1.5rem;
+    }
+    .post-title {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+    }
+    .post-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      color: #666;
+      font-size: 0.875rem;
+    }
+    .post-date {
+      font-style: italic;
+    }
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .post-tag {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      background-color: var(--accent-light);
+      color: var(--text-color);
+      font-size: 0.75rem;
+    }
+    .post-excerpt {
+      margin: 0;
+      color: #333;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .no-results {
+      text-align: center;
+      padding: 3rem;
+      font-size: 1.2rem;
+      color: #666;
+    }
+    .highlight {
+      background-color: yellow;
+      color: black;
+      padding: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <Header />
+  
+  <main class="container">
+    <div class="search-box">
+      <h1>Client-side Search</h1>
+      <p>This search runs entirely in your browser without server requests</p>
+      
+      <div class="search-form">
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="Type to search blog posts..." 
+        />
+        <button id="search-button" class="search-button">Search</button>
+      </div>
+    </div>
+    
+    <div id="results-heading" class="results-heading"></div>
+    <div id="results" class="results-grid"></div>
+  </main>
+  
+  <Footer />
+  
+  <script define:vars={{ postsForClient }}>
+    // All blog posts data is available here
+    const posts = postsForClient;
+    
+    // Elements
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const resultsHeading = document.getElementById('results-heading');
+    const resultsContainer = document.getElementById('results');
+    
+    // Format date helper
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+    
+    // Highlight search terms in text
+    function highlightText(text, searchTerm) {
+      if (!searchTerm) return text;
+      
+      const regex = new RegExp(`(${searchTerm})`, 'gi');
+      return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+    
+    // Create post card element
+    function createPostCard(post, searchTerm) {
+      const card = document.createElement('div');
+      card.className = 'post-card';
+      
+      // Create post image if exists
+      let imageHtml = '';
+      if (post.image) {
+        imageHtml = `
+          <div class="post-image" style="background-image: url('${post.image}')"></div>
+        `;
+      }
+      
+      // Create tags html
+      const tagsHtml = post.tags.length > 0 
+        ? `
+          <div class="post-tags">
+            ${post.tags.map(tag => `<span class="post-tag">${tag}</span>`).join('')}
+          </div>
+        `
+        : '';
+      
+      // Create highlighted content
+      const title = highlightText(post.title, searchTerm);
+      const description = highlightText(post.description, searchTerm);
+      
+      // Set the card HTML
+      card.innerHTML = `
+        <a href="${post.url}" style="text-decoration: none; color: inherit;">
+          ${imageHtml}
+          <div class="post-content">
+            <h2 class="post-title">${title}</h2>
+            <div class="post-meta">
+              <span class="post-date">${formatDate(post.date)}</span>
+              ${tagsHtml}
+            </div>
+            <p class="post-excerpt">${description}</p>
+          </div>
+        </a>
+      `;
+      
+      return card;
+    }
+    
+    // Perform the search
+    function performSearch() {
+      const searchTerm = searchInput.value.trim().toLowerCase();
+      
+      if (!searchTerm) {
+        resultsHeading.innerHTML = `<h2>Enter a search term above</h2>`;
+        resultsContainer.innerHTML = '';
+        return;
+      }
+      
+      // Filter posts based on search term
+      const results = posts.filter(post => 
+        post.title.toLowerCase().includes(searchTerm) ||
+        post.description.toLowerCase().includes(searchTerm) ||
+        post.body.toLowerCase().includes(searchTerm) ||
+        post.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+      );
+      
+      // Update heading
+      resultsHeading.innerHTML = `
+        <h2>Results for "${searchTerm}"</h2>
+        <p>Found ${results.length} result${results.length === 1 ? '' : 's'}</p>
+      `;
+      
+      // Clear previous results
+      resultsContainer.innerHTML = '';
+      
+      // Show results or no results message
+      if (results.length > 0) {
+        results.forEach(post => {
+          const card = createPostCard(post, searchTerm);
+          resultsContainer.appendChild(card);
+        });
+      } else {
+        resultsContainer.innerHTML = `
+          <div class="no-results">
+            <p>No results found for "${searchTerm}"</p>
+            <p>Try a different search term</p>
+          </div>
+        `;
+      }
+    }
+    
+    // Add event listeners
+    searchButton.addEventListener('click', performSearch);
+    searchInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    });
+    
+    // Check for URL parameters and perform search on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const query = urlParams.get('q');
+      
+      if (query) {
+        searchInput.value = query;
+        performSearch();
+      }
+    });
+  </script>
+</body>
+</html>

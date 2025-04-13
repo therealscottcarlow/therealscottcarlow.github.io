@@ -1,0 +1,82 @@
+---
+export interface Props {
+  currentSort?: 'newest' | 'oldest';
+  baseUrl?: string;
+  preserveParams?: boolean;
+  query?: string;
+  tag?: string;
+}
+
+const { 
+  currentSort = 'newest', 
+  baseUrl = '/blog',
+  preserveParams = false,
+  query,
+  tag
+} = Astro.props;
+
+function getSortUrl(sort: string): string {
+  let url = baseUrl;
+  
+  // If we're on a tag page
+  if (tag) {
+    url = `${baseUrl}/tag/${tag}`;
+  }
+  
+  // If we're on a search page
+  if (query && preserveParams) {
+    url = `${baseUrl}/search?q=${encodeURIComponent(query)}`;
+  }
+  
+  // Add sort parameter
+  url += (url.includes('?') ? '&' : '?') + `sort=${sort}`;
+  
+  return url;
+}
+---
+
+<div class="sort-controls">
+  <span>Sort by:</span>
+  <a 
+    href={getSortUrl('newest')} 
+    class={currentSort === 'newest' ? 'sort-option active' : 'sort-option'}
+  >
+    Newest
+  </a>
+  <a 
+    href={getSortUrl('oldest')} 
+    class={currentSort === 'oldest' ? 'sort-option active' : 'sort-option'}
+  >
+    Oldest
+  </a>
+</div>
+
+<style>
+  .sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .sort-option {
+    padding: 0.3rem 0.8rem;
+    border-radius: 3px;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background-color: var(--accent-light);
+  }
+  
+  .sort-option:hover {
+    background-color: var(--accent);
+    color: white;
+  }
+  
+  .sort-option.active {
+    background-color: var(--accent);
+    color: white;
+    font-weight: bold;
+  }
+</style>

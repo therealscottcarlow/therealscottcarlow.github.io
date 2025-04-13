@@ -1,0 +1,275 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import ThemeStatus from '../../components/ThemeStatus.astro';
+import PostCard from '../../components/PostCard.astro';
+
+import { SITE_TITLE } from '../../consts';
+import { getCollection } from 'astro:content';
+
+// Get search query
+const query = Astro.url.searchParams.get('q') || '';
+const searchTerm = query.trim().toLowerCase();
+
+// Debug information
+console.log('DEBUG - Simple search page');
+console.log('URL params:', Object.fromEntries(Astro.url.searchParams));
+console.log('Query:', query);
+console.log('Search term after trim+lowercase:', searchTerm);
+
+// Get sort parameter (default to newest first)
+const sortParam = Astro.url.searchParams.get('sort') || 'newest';
+
+// Get all blog posts
+const allPosts = await getCollection('blog');
+console.log('Total blog posts found:', allPosts.length);
+
+// Debug first post
+if (allPosts.length > 0) {
+  const firstPost = allPosts[0];
+  console.log('First post title:', firstPost.data.title);
+  console.log('First post has content:', firstPost.body ? 'Yes' : 'No');
+  console.log('First post content sample:', firstPost.body.substring(0, 50));
+}
+
+// Try searching with a hardcoded term first
+const loremResults = allPosts.filter(post => post.body.toLowerCase().includes('lorem'));
+console.log('Posts containing "lorem":', loremResults.length);
+
+// Filter posts based on search term - with catch for errors
+let searchResults = [];
+if (searchTerm) {
+  try {
+    console.log('Filtering posts for:', searchTerm);
+    searchResults = allPosts.filter(post => {
+      try {
+        // Safely get content with null/undefined checks
+        const title = (post.data.title || '').toLowerCase();
+        const description = (post.data.description || '').toLowerCase();
+        const content = (post.body || '').toLowerCase();
+        const tags = post.data.tags || [];
+        
+        const titleMatch = title.includes(searchTerm);
+        const descMatch = description.includes(searchTerm);
+        const contentMatch = content.includes(searchTerm);
+        const tagMatch = tags.some(tag => tag.toLowerCase().includes(searchTerm));
+        
+        if (titleMatch || descMatch || contentMatch || tagMatch) {
+          console.log(`Match found in post: ${post.data.title}`);
+          if (titleMatch) console.log('- Title match');
+          if (descMatch) console.log('- Description match');
+          if (contentMatch) console.log('- Content match');
+          if (tagMatch) console.log('- Tag match');
+        }
+        
+        return titleMatch || descMatch || contentMatch || tagMatch;
+      } catch (err) {
+        console.error('Error processing post:', err);
+        return false;
+      }
+    });
+    console.log('Search results count:', searchResults.length);
+  } catch (err) {
+    console.error('Error in search filter:', err);
+  }
+} else {
+  console.log('No search term provided');
+}
+
+// Sort results
+const sortedResults = [...searchResults].sort((a, b) => {
+  if (sortParam === 'oldest') {
+    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
+  }
+  return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+});
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <BaseHead title={query ? `Simple Search: ${query}` : "Simple Search"} description="Simple search for blog posts" />
+    <style>
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+      
+      .search-box {
+        max-width: 800px;
+        margin: 0 auto 2rem auto;
+        padding: 1.5rem;
+        background-color: var(--accent-light);
+        border-radius: 8px;
+      }
+      
+      .search-form {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .search-input {
+        flex: 1;
+        padding: 0.8rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+      
+      .search-button {
+        padding: 0 1.5rem;
+        background-color: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .search-button:hover {
+        opacity: 0.9;
+      }
+      
+      .results-info {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      
+      .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+      
+      .no-results {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-color);
+        opacity: 0.7;
+      }
+      
+      .sort-controls {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .sort-link {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        background-color: var(--accent-light);
+        color: var(--text-color);
+      }
+      
+      .sort-link.active {
+        background-color: var(--accent);
+        color: white;
+      }
+      
+      .back-link {
+        display: inline-block;
+        margin-top: 2rem;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        background-color: var(--accent-light);
+        color: var(--text-color);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <Header />
+    
+    <main class="container">
+      <div class="search-box">
+        <form method="get" action="/blog/simple-search" class="search-form">
+          <input 
+            type="text" 
+            name="q" 
+            value={query} 
+            placeholder="Search blog posts..." 
+            class="search-input"
+            required
+          />
+          <button type="submit" class="search-button">Search</button>
+        </form>
+      </div>
+      
+      {/* Debug info */}
+      <div style="background-color: #f0f0f0; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-family: monospace; white-space: pre-wrap; font-size: 0.8rem;">
+        Query: {query}<br />
+        Posts found: {allPosts.length}<br />
+        Posts containing "lorem": {loremResults.length}<br />
+        Search results: {searchResults.length}<br />
+      </div>
+
+      {query && (
+        <div class="results-info">
+          <h1>Search results for "{query}"</h1>
+          <p>Found {sortedResults.length} result{sortedResults.length === 1 ? '' : 's'}</p>
+          
+          {sortedResults.length > 0 && (
+            <div class="sort-controls">
+              <span>Sort by:</span>
+              <a 
+                href={`/blog/simple-search?q=${encodeURIComponent(query)}&sort=newest`}
+                class={sortParam === 'newest' ? 'sort-link active' : 'sort-link'}
+              >
+                Newest
+              </a>
+              <a 
+                href={`/blog/simple-search?q=${encodeURIComponent(query)}&sort=oldest`}
+                class={sortParam === 'oldest' ? 'sort-link active' : 'sort-link'}
+              >
+                Oldest
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Show all posts when debugging */}
+      <div style="margin-top: 2rem;">
+        <h3>All Available Posts (For Debugging)</h3>
+        <div class="results-grid">
+          {allPosts.map(post => (
+            <div style="border: 1px solid #ccc; padding: 1rem; border-radius: 4px;">
+              <h4>{post.data.title}</h4>
+              <p><strong>Slug:</strong> {post.id}</p>
+              <p><strong>Description:</strong> {post.data.description}</p>
+              <p><strong>Content sample:</strong> {post.body.substring(0, 50)}...</p>
+              <p><strong>Tags:</strong> {post.data.tags?.join(', ') || 'No tags'}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <hr style="margin: 2rem 0;" />
+      
+      {query && sortedResults.length > 0 ? (
+        <div class="results-grid">
+          {sortedResults.map(post => (
+            <PostCard post={post} highlight={searchTerm} />
+          ))}
+        </div>
+      ) : query ? (
+        <div class="no-results">
+          <p>No results found for "{query}". Try a different search term.</p>
+          <a href="/blog" class="back-link">Return to Blog</a>
+        </div>
+      ) : (
+        <div class="no-results">
+          <p>Enter a search term above to find blog posts.</p>
+          <a href="/blog" class="back-link">Browse All Posts</a>
+        </div>
+      )}
+    </main>
+    
+    <Footer />
+    <ThemeStatus />
+  </body>
+</html>

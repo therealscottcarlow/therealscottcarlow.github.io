@@ -1,0 +1,53 @@
+---
+export interface Props {
+  tags: string[];
+  activeTag?: string;
+  baseUrl?: string;
+}
+
+const { tags, activeTag, baseUrl = '/blog/tag' } = Astro.props;
+
+// Sort tags alphabetically
+const sortedTags = [...tags].sort();
+---
+
+<div class="tags">
+  <a href="/blog" class={!activeTag ? 'tag active' : 'tag'}>All</a>
+  {sortedTags.map((tag) => (
+    <a href={`${baseUrl}/${tag}`} class={activeTag === tag ? 'tag active' : 'tag'}>
+      {tag}
+    </a>
+  ))}
+</div>
+
+<style>
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+  }
+  
+  .tag {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 3px;
+    background-color: var(--accent-light);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  
+  .tag:hover {
+    background-color: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+  }
+  
+  .tag.active {
+    background-color: var(--accent);
+    color: white;
+    font-weight: bold;
+  }
+</style>

@@ -1,0 +1,132 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ThemeStatus from '../components/ThemeStatus.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<style>
+			/* Global styles to prevent horizontal scrolling */
+			html, body {
+				overflow-x: hidden;
+				max-width: 100%;
+			}
+
+			.hero {
+				padding: 4rem 0;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				text-align: center;
+				background-color: var(--accent-light);
+				margin-bottom: 2rem;
+			}
+			.hero h1 {
+				font-size: 2.5rem;
+				margin: 0 0 1rem 0;
+			}
+			.hero-subtitle {
+				font-size: 1.2rem;
+				margin: 0;
+				color: var(--text-color);
+			}
+			.featured-section {
+				max-width: 960px;
+				margin: 0 auto 4rem auto;
+				padding: 0 1rem;
+				box-sizing: border-box;
+				width: 100%;
+			}
+			.featured-section h2 {
+				font-size: 1.8rem;
+				margin-bottom: 1.5rem;
+				border-bottom: 2px solid var(--accent-light);
+				padding-bottom: 0.5rem;
+			}
+			.featured-section p {
+				margin-bottom: 1.5rem;
+			}
+			.button {
+				display: inline-block;
+				background: var(--accent);
+				color: white;
+				padding: 0.5rem 1rem;
+				border-radius: 4px;
+				text-decoration: none;
+				font-weight: bold;
+				transition: background-color 0.2s ease;
+			}
+			.button:hover {
+				background: var(--accent-dark);
+			}
+			.skills {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.8rem;
+				margin-bottom: 2rem;
+			}
+			.skill-tag {
+				background-color: var(--accent-light);
+				color: var(--text-color);
+				padding: 0.3rem 0.8rem;
+				border-radius: 3px;
+				font-size: 0.9rem;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section class="hero">
+				<h1>Hi, I'm Your Name</h1>
+				<p class="hero-subtitle">Software Engineer & Web Developer</p>
+			</section>
+
+			<section class="featured-section">
+				<h2>About Me</h2>
+				<p>
+					I'm a passionate software engineer specializing in front-end development.
+					With expertise in modern web technologies, I build fast, responsive, and user-friendly applications
+					that solve real-world problems.
+				</p>
+				<p>
+					I'm currently based in [Your Location] and am enthusiastic about creating 
+					efficient solutions, implementing best practices, and continuously learning new technologies.
+				</p>
+				<a href="/about" class="button">Learn more about me</a>
+			</section>
+
+			<section class="featured-section">
+				<h2>My Skills</h2>
+				<div class="skills">
+					<span class="skill-tag">JavaScript</span>
+					<span class="skill-tag">TypeScript</span>
+					<span class="skill-tag">React</span>
+					<span class="skill-tag">Svelte</span>
+					<span class="skill-tag">HTML/CSS</span>
+					<span class="skill-tag">Node.js</span>
+					<span class="skill-tag">Web Performance</span>
+					<span class="skill-tag">Responsive Design</span>
+					<span class="skill-tag">Accessibility</span>
+				</div>
+				<a href="/resume" class="button">View my resume</a>
+			</section>
+
+			<section class="featured-section">
+				<h2>Recent Blog Posts</h2>
+				<p>
+					I write about web development, software engineering practices, and my experiences
+					working with different technologies.
+				</p>
+				<a href="/blog" class="button">Read my blog</a>
+			</section>
+		</main>
+		<Footer />
+		<ThemeStatus />
+	</body>
+</html>

@@ -1,0 +1,88 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+import { getCollection } from 'astro:content';
+
+// Get query parameter
+const query = Astro.url.searchParams.get('q') || '';
+
+// Get all posts
+const allPosts = await getCollection('blog');
+
+// Hard-coded search for "lorem"
+const loremPosts = allPosts.filter(post => 
+  post.body.toLowerCase().includes('lorem')
+);
+
+// User search
+const searchResults = query.length > 0 
+  ? allPosts.filter(post => 
+      post.data.title.toLowerCase().includes(query.toLowerCase()) ||
+      post.data.description.toLowerCase().includes(query.toLowerCase()) ||
+      post.body.toLowerCase().includes(query.toLowerCase())
+    )
+  : [];
+---
+
+<html>
+  <head>
+    <BaseHead title="Ultra Basic Search" description="The most basic search" />
+    <style>
+      .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+      .debug { background: #f0f0f0; padding: 10px; margin: 20px 0; border: 1px solid #ccc; }
+      .post { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <div class="container">
+      <h1>Ultra Basic Search</h1>
+      
+      <form action="/blog/basic-search" method="get">
+        <input type="text" name="q" value={query} />
+        <button type="submit">Search</button>
+      </form>
+      
+      <div class="debug">
+        <h3>Debug Info:</h3>
+        <p>Query: "{query}"</p>
+        <p>Total posts: {allPosts.length}</p>
+        <p>Posts containing "lorem": {loremPosts.length}</p>
+        <p>Search results: {searchResults.length}</p>
+      </div>
+      
+      <h2>All Posts (showing titles only)</h2>
+      <div>
+        {allPosts.map(post => (
+          <div class="post">
+            <h3>{post.data.title}</h3>
+            <p>First 30 chars: {post.body.substring(0, 30)}...</p>
+          </div>
+        ))}
+      </div>
+      
+      <h2>Posts containing "lorem"</h2>
+      <div>
+        {loremPosts.map(post => (
+          <div class="post">
+            <h3>{post.data.title}</h3>
+            <p>Content sample: {post.body.substring(0, 30)}...</p>
+          </div>
+        ))}
+      </div>
+      
+      <h2>Search Results for "{query}"</h2>
+      <div>
+        {searchResults.map(post => (
+          <div class="post">
+            <h3>{post.data.title}</h3>
+            <p>Content sample: {post.body.substring(0, 30)}...</p>
+          </div>
+        ))}
+      </div>
+    </div>
+    <Footer />
+  </body>
+</html>

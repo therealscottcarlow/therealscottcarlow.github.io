@@ -1,0 +1,177 @@
+---
+import BaseHead from '../../../components/BaseHead.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import ThemeStatus from '../../../components/ThemeStatus.astro';
+import TagList from '../../../components/TagList.astro';
+import SearchBar from '../../../components/SearchBar.astro';
+import SortControl from '../../../components/SortControl.astro';
+import PostCard from '../../../components/PostCard.astro';
+
+import { SITE_TITLE } from '../../../consts';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('blog');
+  
+  // Get all unique tags
+  const uniqueTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
+  
+  // Return a path for each tag
+  return uniqueTags.map(tag => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: allPosts.filter(post => post.data.tags?.includes(tag))
+    }
+  }));
+}
+
+const { tag, posts } = Astro.props;
+
+// Get all tags for the tag list
+const allPosts = await getCollection('blog');
+const allTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
+
+// Get sort parameter (default to newest first)
+const sortParam = Astro.url.searchParams.get('sort') || 'newest';
+
+// Sort posts based on the sort parameter
+const sortedPosts = [...posts].sort((a, b) => {
+  if (sortParam === 'oldest') {
+    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
+  }
+  return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+});
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Posts tagged "${tag}" | ${SITE_TITLE}`} description={`Blog posts tagged with ${tag}`} />
+		<style>
+			/* Global styles to prevent horizontal scrolling */
+            html, body {
+                overflow-x: hidden;
+                max-width: 100%;
+            }
+            
+			.blog-container {
+				width: 100%;
+				max-width: 1400px;
+				margin: 0 auto;
+				padding: 1em;
+				box-sizing: border-box;
+			}
+			
+			@media (min-width: 768px) {
+				.blog-container {
+					padding: 1em 2em;
+				}
+			}
+			
+			@media (min-width: 1600px) {
+				.blog-container {
+					max-width: 1600px;
+				}
+			}
+			
+			.blog-header {
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.blog-header h1 {
+				font-size: 2.5rem;
+				margin-bottom: 0.5rem;
+			}
+			.tag-highlight {
+				color: var(--accent);
+			}
+			.blog-description {
+				color: var(--text-color);
+				opacity: 0.8;
+				font-size: 1.1rem;
+			}
+			.filters-wrapper {
+				display: flex;
+				flex-direction: column;
+				margin-bottom: 2rem;
+				border-bottom: 1px solid var(--border-color);
+				padding-bottom: 1rem;
+			}
+			.blog-posts-list {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 1rem;
+			}
+			.empty-message {
+				text-align: center;
+				padding: 2rem;
+				color: var(--text-color);
+				opacity: 0.7;
+			}
+			
+			/* Responsive grid that adjusts based on viewport width */
+			@media (min-width: 640px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(2, 1fr);
+                    gap: 1.5rem;
+				}
+			}
+			
+			@media (min-width: 1024px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(3, 1fr);
+                    gap: 2rem;
+				}
+			}
+			
+			@media (min-width: 1440px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(4, 1fr);
+				}
+			}
+			
+			@media (min-width: 1800px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(5, 1fr);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="blog-container">
+			<div class="blog-header">
+				<h1>Posts tagged <span class="tag-highlight">"{tag}"</span></h1>
+				<p class="blog-description">
+					Showing {sortedPosts.length} post{sortedPosts.length === 1 ? '' : 's'} with this tag
+				</p>
+			</div>
+
+			<div class="filters-wrapper">
+				<SearchBar />
+				<TagList tags={allTags} activeTag={tag} />
+				<SortControl 
+					currentSort={sortParam as 'newest' | 'oldest'}
+					baseUrl="/blog"
+					tag={tag}
+				/>
+			</div>
+
+			<div class="blog-posts-list">
+				{sortedPosts.length > 0 ? (
+					sortedPosts.map((post) => (
+						<PostCard post={post} />
+					))
+				) : (
+					<div class="empty-message">
+						<p>No posts found with the tag "{tag}".</p>
+					</div>
+				)}
+			</div>
+		</main>
+		<Footer />
+		<ThemeStatus />
+	</body>
+</html>

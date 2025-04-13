@@ -1,0 +1,167 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import ThemeStatus from '../../components/ThemeStatus.astro';
+import TagList from '../../components/TagList.astro';
+import SearchBar from '../../components/SearchBar.astro';
+import SortControl from '../../components/SortControl.astro';
+import PostCard from '../../components/PostCard.astro';
+
+import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
+import { getCollection } from 'astro:content';
+
+// Get all blog posts
+const allPosts = await getCollection('blog');
+
+// Extract all tags from posts and remove duplicates
+const allTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
+
+// Get sort parameter (default to newest first)
+const sortParam = Astro.url.searchParams.get('sort') || 'newest';
+
+// Sort posts based on the sort parameter
+const sortedPosts = [...allPosts].sort((a, b) => {
+  if (sortParam === 'oldest') {
+    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
+  }
+  return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+});
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Blog | ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+		<style>
+			/* Global styles to prevent horizontal scrolling */
+            html, body {
+                overflow-x: hidden;
+                max-width: 100%;
+            }
+            
+			.blog-container {
+				width: 100%;
+				max-width: 1400px;
+				margin: 0 auto;
+				padding: 1em;
+				box-sizing: border-box;
+			}
+			
+			@media (min-width: 768px) {
+				.blog-container {
+					padding: 1em 2em;
+				}
+			}
+			
+			@media (min-width: 1600px) {
+				.blog-container {
+					max-width: 1600px;
+				}
+			}
+			
+			.blog-header {
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.blog-header h1 {
+				font-size: 2.5rem;
+				margin-bottom: 0.5rem;
+			}
+			.blog-description {
+				color: var(--text-color);
+				opacity: 0.8;
+				font-size: 1.1rem;
+			}
+			.filters-wrapper {
+				display: flex;
+				flex-direction: column;
+				margin-bottom: 2rem;
+				border-bottom: 1px solid var(--border-color);
+				padding-bottom: 1rem;
+			}
+			.blog-posts-list {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 1rem;
+			}
+			
+			/* Responsive grid that adjusts based on viewport width */
+			@media (min-width: 640px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(2, 1fr);
+                    gap: 1.5rem;
+				}
+			}
+			
+			@media (min-width: 1024px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(3, 1fr);
+                    gap: 2rem;
+				}
+			}
+			
+			@media (min-width: 1440px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(4, 1fr);
+				}
+			}
+			
+			@media (min-width: 1800px) {
+				.blog-posts-list {
+					grid-template-columns: repeat(5, 1fr);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="blog-container">
+			<div class="blog-header">
+				<h1>Blog Posts</h1>
+				<p class="blog-description">Thoughts, stories, and ideas about web development and technology.</p>
+			</div>
+
+			{/* Emergency direct search form */}
+			<div style="margin: 1rem 0; padding: 1rem; background-color: var(--accent-light); border-radius: 8px;">
+				<h3 style="margin-bottom: 0.5rem;">Emergency Direct Search Form</h3>
+				<form action="/blog/simple-search" method="get" style="display: flex; gap: 10px;">
+					<input 
+						type="text" 
+						name="q" 
+						placeholder="Type search term here..." 
+						style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);"
+					/>
+					<button type="submit" style="padding: 0.5rem 1rem; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">
+						Search
+					</button>
+				</form>
+				<p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.8;">Using our alternative search page that avoids potential issues</p>
+				<div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 1rem;">
+					<a href="/blog/basic-search" style="color: var(--accent);">Ultra Basic Search</a>
+					<a href="/blog/search-mini" style="color: var(--accent);">Minimal Search</a>
+					<a href="/blog/pure-html-search.html" style="color: var(--accent);">Pure HTML Form</a>
+					<a href="/blog/raw-search" style="color: var(--accent);">Raw URL Test</a>
+					<a href="/blog/direct-node-test?q=test" style="color: var(--accent);">Direct Node Test</a>
+					<a href="/blog/client-search?q=test" style="color: var(--accent);">Client-side Search</a>
+				</div>
+			</div>
+
+			<div class="filters-wrapper">
+				<SearchBar />
+				<TagList tags={allTags} />
+				<SortControl currentSort={sortParam as 'newest' | 'oldest'} />
+			</div>
+
+			<div class="blog-posts-list">
+				{
+					sortedPosts.map((post) => (
+						<PostCard post={post} />
+					))
+				}
+			</div>
+		</main>
+		<Footer />
+		<ThemeStatus />
+	</body>
+</html>

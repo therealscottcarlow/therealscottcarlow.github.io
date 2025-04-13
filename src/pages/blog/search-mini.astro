@@ -1,0 +1,174 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+import PostCard from '../../components/PostCard.astro';
+
+// Get query parameter
+const query = Astro.url.searchParams.get('q') || '';
+const searchTerm = query.trim().toLowerCase();
+
+// Get all posts
+const allPosts = await getCollection('blog');
+
+// Direct search without any fancy logic
+let searchResults = [];
+try {
+  if (searchTerm) {
+    console.log(`Searching for: "${searchTerm}"`);
+    searchResults = allPosts.filter(post => 
+      post.data.title.toLowerCase().includes(searchTerm) ||
+      post.data.description.toLowerCase().includes(searchTerm) ||
+      post.body.toLowerCase().includes(searchTerm) ||
+      (post.data.tags && post.data.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+    );
+    console.log(`Found ${searchResults.length} results`);
+  }
+} catch (error) {
+  console.error("Search error:", error);
+}
+
+// Sort by date (newest first)
+searchResults.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <BaseHead title="Minimal Search" description="A minimal search page" />
+    <style>
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+      .search-box {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .search-form {
+        display: flex;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .search-input {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px 0 0 4px;
+      }
+      .search-button {
+        padding: 0.5rem 1rem;
+        background: #4d5eff;
+        color: white;
+        border: none;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+      }
+      .results-container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .search-title {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+      .no-results {
+        text-align: center;
+        padding: 3rem;
+        font-size: 1.2rem;
+      }
+      .back-link {
+        display: inline-block;
+        margin-top: 1rem;
+        color: #4d5eff;
+        text-decoration: none;
+      }
+      .debug-info {
+        margin: 2rem 0;
+        padding: 1rem;
+        background: #f8f8f8;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <Header />
+    
+    <main class="container">
+      <div class="search-box">
+        <h1>Blog Search</h1>
+        <form action="/blog/search-mini" method="get" class="search-form">
+          <input 
+            type="text" 
+            name="q" 
+            value={query}
+            placeholder="Search blog posts..." 
+            class="search-input"
+          />
+          <button type="submit" class="search-button">Search</button>
+        </form>
+      </div>
+      
+      <!-- Debug info -->
+      <div class="debug-info">
+        <h3>Debug Info</h3>
+        <p>Query: "{query}"</p>
+        <p>SearchTerm: "{searchTerm}"</p>
+        <p>Total posts: {allPosts.length}</p>
+        <p>Results found: {searchResults.length}</p>
+      </div>
+      
+      {query && (
+        <div class="search-title">
+          <h2>Results for "{query}"</h2>
+          <p>Found {searchResults.length} result(s)</p>
+        </div>
+      )}
+      
+      {query && searchResults.length > 0 ? (
+        <div class="results-grid">
+          {searchResults.map(post => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      ) : query ? (
+        <div class="no-results">
+          <p>No results found for "{query}".</p>
+          <a href="/blog" class="back-link">Return to all blog posts</a>
+        </div>
+      ) : null}
+      
+      <!-- Always show all available posts for debugging -->
+      <div style="margin-top: 3rem;">
+        <h2>All Available Posts</h2>
+        <div class="results-grid">
+          {allPosts.map(post => (
+            <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+              <h3>{post.data.title}</h3>
+              <p><small>Date: {post.data.pubDate.toLocaleDateString()}</small></p>
+              <p style="font-size: 0.9rem;">{post.data.description}</p>
+              <details>
+                <summary>Content Preview</summary>
+                <p style="font-size: 0.8rem; opacity: 0.8;">{post.body.substring(0, 100)}...</p>
+              </details>
+              <p><small>Tags: {post.data.tags ? post.data.tags.join(', ') : 'None'}</small></p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+    
+    <Footer />
+  </body>
+</html>

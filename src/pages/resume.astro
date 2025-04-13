@@ -1,0 +1,180 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ThemeStatus from '../components/ThemeStatus.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Resume | ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+		<style>
+			/* Global styles to prevent horizontal scrolling */
+			html, body {
+				overflow-x: hidden;
+				max-width: 100%;
+			}
+			
+			.resume-container {
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 1em;
+				box-sizing: border-box;
+				width: 100%;
+			}
+			.resume-header {
+				text-align: center;
+				margin-bottom: 2em;
+			}
+			.resume-section {
+				margin-bottom: 2em;
+			}
+			.resume-section h2 {
+				border-bottom: 1px solid var(--accent);
+				padding-bottom: 0.5em;
+				margin-bottom: 1em;
+			}
+			.experience-item, .education-item {
+				margin-bottom: 1.5em;
+			}
+			.experience-header, .education-header {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 0.5em;
+			}
+			.experience-title, .education-degree {
+				font-weight: bold;
+			}
+			.experience-company, .education-institution {
+				font-style: italic;
+			}
+			.skills-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5em;
+				list-style: none;
+				padding: 0;
+			}
+			.skills-list li {
+				background-color: var(--accent-light);
+				color: var(--text-color);
+				padding: 0.3em 0.8em;
+				border-radius: 3px;
+			}
+			@media print {
+				header, footer {
+					display: none;
+				}
+				.resume-container {
+					padding: 0;
+				}
+				body {
+					color: black;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="resume-container">
+			<section class="resume-header">
+				<h1>Your Name</h1>
+				<p>Software Engineer | Web Developer | Problem Solver</p>
+				<p>your.email@example.com | (123) 456-7890 | City, Country</p>
+			</section>
+
+			<section class="resume-section">
+				<h2>Summary</h2>
+				<p>
+					Experienced software engineer with a passion for creating elegant, efficient, and user-friendly web applications. 
+					Skilled in modern front-end technologies and frameworks with a strong focus on performance and accessibility.
+				</p>
+			</section>
+
+			<section class="resume-section">
+				<h2>Skills</h2>
+				<ul class="skills-list">
+					<li>JavaScript</li>
+					<li>TypeScript</li>
+					<li>React</li>
+					<li>Svelte</li>
+					<li>HTML/CSS</li>
+					<li>Node.js</li>
+					<li>Git</li>
+					<li>Responsive Design</li>
+					<li>Performance Optimization</li>
+					<li>Accessibility</li>
+					<li>Testing</li>
+					<li>CI/CD</li>
+				</ul>
+			</section>
+
+			<section class="resume-section">
+				<h2>Experience</h2>
+				
+				<div class="experience-item">
+					<div class="experience-header">
+						<span class="experience-title">Senior Front-end Developer</span>
+						<span class="experience-date">Jan 2022 - Present</span>
+					</div>
+					<div class="experience-company">Example Company Inc.</div>
+					<ul>
+						<li>Led the development of a progressive web application that increased user engagement by 40%</li>
+						<li>Implemented performance optimizations that reduced load times by 60%</li>
+						<li>Mentored junior developers and conducted code reviews to maintain high code quality</li>
+						<li>Collaborated with design and product teams to create intuitive user interfaces</li>
+					</ul>
+				</div>
+				
+				<div class="experience-item">
+					<div class="experience-header">
+						<span class="experience-title">Front-end Developer</span>
+						<span class="experience-date">Jun 2019 - Dec 2021</span>
+					</div>
+					<div class="experience-company">Previous Corp</div>
+					<ul>
+						<li>Developed and maintained multiple web applications using React and TypeScript</li>
+						<li>Improved website accessibility to meet WCAG 2.1 AA standards</li>
+						<li>Created reusable component library that reduced development time by 30%</li>
+						<li>Participated in agile development process with bi-weekly sprints</li>
+					</ul>
+				</div>
+			</section>
+
+			<section class="resume-section">
+				<h2>Education</h2>
+				
+				<div class="education-item">
+					<div class="education-header">
+						<span class="education-degree">Bachelor of Science in Computer Science</span>
+						<span class="education-date">2015 - 2019</span>
+					</div>
+					<div class="education-institution">University of Technology</div>
+					<p>Graduated with honors. Focused on web technologies and software engineering.</p>
+				</div>
+			</section>
+
+			<section class="resume-section">
+				<h2>Projects</h2>
+				<div class="experience-item">
+					<div class="experience-header">
+						<span class="experience-title">Personal Portfolio & Blog</span>
+						<span class="experience-date">2023</span>
+					</div>
+					<p>Built with Astro, this site showcases my work and technical writing. Focus on performance and minimal JavaScript.</p>
+				</div>
+				<div class="experience-item">
+					<div class="experience-header">
+						<span class="experience-title">Open Source Contributions</span>
+						<span class="experience-date">Ongoing</span>
+					</div>
+					<p>Active contributor to several open source projects, focusing on accessibility improvements and documentation.</p>
+				</div>
+			</section>
+		</main>
+		<Footer />
+		<ThemeStatus />
+	</body>
+</html>

@@ -366,20 +366,27 @@ console.log(`Total posts available: ${postsData.length}`);
           ? searchTerm.substring(1, searchTerm.length - 1).toLowerCase()
           : searchTerm;
         
-        // Filter posts
+        // Function to check if a string contains the search term as a whole word
+        function containsWholeWord(text, term) {
+          if (!text || !term) return false;
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(text);
+        }
+        
+        // Filter posts for whole word matches only
         const results = posts.filter(post => {
           // Check title
-          const titleMatch = post.title.toLowerCase().includes(normalizedTerm);
+          const titleMatch = containsWholeWord(post.title, normalizedTerm);
           
           // Check description
-          const descMatch = post.description.toLowerCase().includes(normalizedTerm);
+          const descMatch = containsWholeWord(post.description, normalizedTerm);
           
           // Check content
-          const contentMatch = post.body.toLowerCase().includes(normalizedTerm);
+          const contentMatch = containsWholeWord(post.body, normalizedTerm);
           
           // Check tags
           const tagMatch = (post.tags || []).some(tag => 
-            tag.toLowerCase().includes(normalizedTerm)
+            containsWholeWord(tag, normalizedTerm)
           );
           
           return titleMatch || descMatch || contentMatch || tagMatch;
@@ -492,26 +499,32 @@ console.log(`Total posts available: ${postsData.length}`);
         });
       }
       
-      // Helper function to calculate relevance score
+      // Helper function to calculate relevance score with whole word matching
       function getRelevanceScore(post, searchTerm, isExactMatch) {
         let score = 0;
         
+        // Function to check if a string contains the search term as a whole word
+        function containsWholeWord(text, term) {
+          if (!text || !term) return false;
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(text);
+        }
+        
         // Title matches (highest priority)
-        if (post.title.toLowerCase().includes(searchTerm)) {
+        if (containsWholeWord(post.title.toLowerCase(), searchTerm)) {
           score += 10;
           
-          // Exact matches or starts with query get bonus
+          // Exact matches get bonus
           if (post.title.toLowerCase() === searchTerm) score += 5;
-          if (post.title.toLowerCase().startsWith(searchTerm)) score += 3;
         }
         
         // Description matches
-        if (post.description.toLowerCase().includes(searchTerm)) {
+        if (containsWholeWord(post.description.toLowerCase(), searchTerm)) {
           score += 5;
         }
         
         // Tag matches
-        if (post.tags && post.tags.some(tag => tag.toLowerCase().includes(searchTerm))) {
+        if (post.tags && post.tags.some(tag => containsWholeWord(tag.toLowerCase(), searchTerm))) {
           score += 4;
           // Exact tag match gets extra points
           if (post.tags.some(tag => tag.toLowerCase() === searchTerm)) {
@@ -520,15 +533,15 @@ console.log(`Total posts available: ${postsData.length}`);
         }
         
         // Content matches
-        if (post.body.toLowerCase().includes(searchTerm)) {
+        if (containsWholeWord(post.body.toLowerCase(), searchTerm)) {
           score += 3;
         }
         
         // Exact match bonus (for quoted searches)
         if (isExactMatch) {
-          if (post.title.toLowerCase().includes(searchTerm) || 
-              post.description.toLowerCase().includes(searchTerm) ||
-              post.body.toLowerCase().includes(searchTerm)) {
+          if (containsWholeWord(post.title.toLowerCase(), searchTerm) || 
+              containsWholeWord(post.description.toLowerCase(), searchTerm) ||
+              containsWholeWord(post.body.toLowerCase(), searchTerm)) {
             score += 5;
           }
         }
@@ -536,14 +549,14 @@ console.log(`Total posts available: ${postsData.length}`);
         return score;
       }
       
-      // Helper function to highlight matched text
+      // Helper function to highlight matched text (whole words only)
       function highlightText(text, searchTerm) {
         if (!searchTerm) return text;
         
         try {
           // Escape special regex characters
           const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(`(${escapedTerm})`, 'gi');
+          const regex = new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
           return text.replace(regex, '<span class="highlight">$1</span>');
         } catch (e) {
           console.error('Error highlighting text:', e);

@@ -13,7 +13,6 @@ import { getCollection } from 'astro:content';
 
 // Get search query from URL parameters
 const query = Astro.url.searchParams.get('q') || '';
-const searchTerm = query.trim().toLowerCase();
 
 // Get sort parameter (default to newest first)
 const sortParam = Astro.url.searchParams.get('sort') || 'newest';
@@ -24,482 +23,539 @@ const allPosts = await getCollection('blog');
 // Extract all tags from posts for the tag filter
 const allTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
 
-// Transform posts to a simplified format for client-side use
-const postsForClient = allPosts.map(post => ({
+// Create a simplified data structure for client-side processing
+const postsData = allPosts.map(post => ({
   id: post.id,
   title: post.data.title,
   description: post.data.description,
-  date: post.data.pubDate.toISOString(),
-  tags: post.data.tags || [],
   body: post.body,
-  url: `/blog/${post.id}/`,
-  image: post.data.heroImage
+  tags: post.data.tags || [],
+  date: post.data.pubDate.toISOString(),
+  image: post.data.heroImage,
+  url: `/blog/${post.id}/`
 }));
+
+// Check if there are any posts for client-side debugging
+console.log(`Total posts available: ${postsData.length}`);
 ---
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <BaseHead 
-      title={query ? `Search results for "${query}" | ${SITE_TITLE}` : `Search Blog | ${SITE_TITLE}`} 
-      description={query ? `Search results for ${query} in the blog` : "Search our blog posts"}
-    />
-    <style>
-      /* Global styles to prevent horizontal scrolling */
-      html, body {
-        overflow-x: hidden;
-        max-width: 100%;
-      }
-      
-      .blog-container {
-        width: 100%;
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 1em;
-        box-sizing: border-box;
-      }
-      
-      @media (min-width: 768px) {
-        .blog-container {
-          padding: 1em 2em;
-        }
-      }
-      
-      @media (min-width: 1600px) {
-        .blog-container {
-          max-width: 1600px;
-        }
-      }
-      
-      .blog-header {
-        margin-bottom: 2rem;
-        text-align: center;
-      }
-      
-      .blog-header h1 {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-      }
-      
-      .search-term {
-        color: var(--accent);
-      }
-      
-      .blog-description {
-        color: var(--text-color);
-        opacity: 0.8;
-        font-size: 1.1rem;
-      }
-      
-      .filters-wrapper {
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 1rem;
-      }
-      
-      .blog-posts-list {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-      }
-      
-      .empty-message {
-        text-align: center;
-        padding: 2rem;
-        color: var(--text-color);
-        opacity: 0.7;
-      }
-      
-      .return-link {
-        display: inline-block;
-        margin-top: 1rem;
-        color: var(--accent);
-        text-decoration: none;
-        font-weight: 500;
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--accent);
-        border-radius: 4px;
-        transition: all 0.2s ease;
-      }
-      
-      .return-link:hover {
-        background-color: var(--accent);
-        color: white;
-        transform: translateY(-2px);
-      }
-      
-      /* Responsive grid that adjusts based on viewport width */
-      @media (min-width: 640px) {
-        .blog-posts-list {
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1.5rem;
-        }
-      }
-      
-      @media (min-width: 1024px) {
-        .blog-posts-list {
-          grid-template-columns: repeat(3, 1fr);
-          gap: 2rem;
-        }
-      }
-      
-      @media (min-width: 1440px) {
-        .blog-posts-list {
-          grid-template-columns: repeat(4, 1fr);
-        }
-      }
-      
-      @media (min-width: 1800px) {
-        .blog-posts-list {
-          grid-template-columns: repeat(5, 1fr);
-        }
-      }
-      
-      .highlight {
-        background-color: var(--accent-light);
-        color: var(--text-color);
-        padding: 0 2px;
-        border-radius: 2px;
-      }
-    </style>
-  </head>
-  <body>
-    <Header />
-    <main class="blog-container">
-      <div class="blog-header">
-        {query ? (
-          <h1>Search results for <span class="search-term">"{query}"</span></h1>
-        ) : (
-          <h1>Search Blog Posts</h1>
-        )}
-      </div>
-
-      <div class="filters-wrapper">
-        <SearchBar query={query} />
-        <TagList tags={allTags} />
-        {query && (
-          <SortControl 
-            currentSort={sortParam as 'newest' | 'oldest'} 
-            baseUrl="/blog/search"
-            preserveParams={true}
-            query={query}
-          />
-        )}
-      </div>
-
-      <div id="search-results" class="blog-posts-list">
-        <!-- Results will be populated by client-side JavaScript -->
-      </div>
-    </main>
-    <Footer />
-    <ThemeStatus />
+<head>
+  <BaseHead 
+    title={query ? `Search results for "${query}" | ${SITE_TITLE}` : `Search Blog | ${SITE_TITLE}`} 
+    description={query ? `Search results for ${query} in the blog` : "Search our blog posts"}
+  />
+  <style>
+    /* Global styles to prevent horizontal scrolling */
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
     
-    <script define:vars={{ postsForClient, query, searchTerm, sortParam }}>
-      // All blog posts data is available here
-      const posts = postsForClient;
-      const searchInput = document.querySelector('.search-input');
-      const resultsContainer = document.getElementById('search-results');
+    .blog-container {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1em;
+      box-sizing: border-box;
+    }
+    
+    @media (min-width: 768px) {
+      .blog-container {
+        padding: 1em 2em;
+      }
+    }
+    
+    @media (min-width: 1600px) {
+      .blog-container {
+        max-width: 1600px;
+      }
+    }
+    
+    .blog-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .blog-header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .search-term {
+      color: var(--accent);
+    }
+    
+    .blog-description {
+      color: var(--text-color);
+      opacity: 0.8;
+      font-size: 1.1rem;
+    }
+    
+    .filters-wrapper {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+    
+    .blog-posts-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .empty-message {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-color);
+      opacity: 0.7;
+    }
+    
+    .return-link {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .return-link:hover {
+      background-color: var(--accent);
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    /* Responsive grid that adjusts based on viewport width */
+    @media (min-width: 640px) {
+      .blog-posts-list {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+      }
+    }
+    
+    @media (min-width: 1024px) {
+      .blog-posts-list {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+      }
+    }
+    
+    @media (min-width: 1440px) {
+      .blog-posts-list {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    
+    @media (min-width: 1800px) {
+      .blog-posts-list {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+    
+    /* Post card styles */
+    .post-card {
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: var(--card-bg);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .post-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .post-card a {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+    }
+    
+    .post-image {
+      overflow: hidden;
+      position: relative;
+      padding-top: 56.25%; /* 16:9 aspect ratio */
+    }
+    
+    .post-image img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    
+    .post-card:hover .post-image img {
+      transform: scale(1.05);
+    }
+    
+    .post-content {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .post-title {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      color: var(--heading-color);
+      line-height: 1.3;
+    }
+    
+    .post-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      color: var(--text-color);
+      opacity: 0.8;
+    }
+    
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .post-tag {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      background-color: var(--accent-light);
+      color: var(--text-color);
+      font-size: 0.75rem;
+      text-decoration: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .post-tag:hover {
+      background-color: var(--accent);
+      color: white;
+    }
+    
+    .post-excerpt {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+    
+    .highlight {
+      background-color: var(--accent-light);
+      color: var(--text-color);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+    
+    /* Sort controls styles */
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .sort-option {
+      padding: 0.3rem 0.8rem;
+      border-radius: 3px;
+      color: var(--text-color);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      background-color: var(--accent-light);
+    }
+    
+    .sort-option:hover {
+      background-color: var(--accent);
+      color: white;
+    }
+    
+    .sort-option.active {
+      background-color: var(--accent);
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <Header />
+  <main class="blog-container">
+    <div class="blog-header">
+      <h1>Search <span id="search-title">Blog Posts</span></h1>
+      <p class="blog-description" id="results-count"></p>
+    </div>
+
+    <div class="filters-wrapper">
+      <SearchBar query={query} />
+      <TagList tags={allTags} />
+      <div id="sort-controls-container">
+        <!-- Sort controls will be added here if needed -->
+      </div>
+    </div>
+
+    <div id="search-results" class="blog-posts-list">
+      <!-- Results will be populated by client-side JavaScript -->
+      <div class="empty-message">
+        <p>Loading search results...</p>
+      </div>
+    </div>
+  </main>
+  <Footer />
+  <ThemeStatus />
+
+  <script>
+    // This is a simple version of client-side search that guarantees basic functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const query = urlParams.get('q') || '';
+      const sortParam = urlParams.get('sort') || 'newest';
       
-      // Format date helper
-      function formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+      // If query is empty, redirect to blog index
+      if (!query.trim()) {
+        window.location.href = '/blog';
+        return;
+      }
+      
+      // Update title and input field with query
+      document.getElementById('search-title').innerHTML = `results for <span class="search-term">"${query}"</span>`;
+      document.querySelector('.search-input').value = query;
+      
+      // Get Sort Controls container
+      const sortControlsContainer = document.getElementById('sort-controls-container');
+      
+      // Fetch all posts data (this is just a failsafe if the inline script doesn't work)
+      fetch('/blog.json')
+        .then(response => response.json())
+        .catch(() => {
+          // If fetch fails, look for data in window object
+          return window.blogPostsData || [];
+        })
+        .then(runSearch);
+      
+      // Main search function
+      function runSearch(posts) {
+        console.log(`Searching through ${posts.length} posts for: "${query}"`);
+        
+        // Normalize search query
+        const searchTerm = query.trim().toLowerCase();
+        const isExactMatch = 
+          (searchTerm.startsWith('"') && searchTerm.endsWith('"')) || 
+          (searchTerm.startsWith("'") && searchTerm.endsWith("'"));
+        
+        const normalizedTerm = isExactMatch 
+          ? searchTerm.substring(1, searchTerm.length - 1).toLowerCase()
+          : searchTerm;
+        
+        // Filter posts
+        const results = posts.filter(post => {
+          // Check title
+          const titleMatch = post.title.toLowerCase().includes(normalizedTerm);
+          
+          // Check description
+          const descMatch = post.description.toLowerCase().includes(normalizedTerm);
+          
+          // Check content
+          const contentMatch = post.body.toLowerCase().includes(normalizedTerm);
+          
+          // Check tags
+          const tagMatch = (post.tags || []).some(tag => 
+            tag.toLowerCase().includes(normalizedTerm)
+          );
+          
+          return titleMatch || descMatch || contentMatch || tagMatch;
+        });
+        
+        console.log(`Found ${results.length} results`);
+        
+        // Update results count
+        document.getElementById('results-count').textContent = 
+          `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
+        
+        // Sort results
+        results.sort((a, b) => {
+          // Sort by relevance/score first
+          const scoreA = getRelevanceScore(a, normalizedTerm, isExactMatch);
+          const scoreB = getRelevanceScore(b, normalizedTerm, isExactMatch);
+          
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA; // Higher score first
+          }
+          
+          // If same relevance, sort by date
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          
+          if (sortParam === 'oldest') {
+            return dateA - dateB;
+          }
+          return dateB - dateA;
+        });
+        
+        // Create sort controls
+        if (results.length > 0) {
+          sortControlsContainer.innerHTML = `
+            <div class="sort-controls">
+              <span>Sort by:</span>
+              <a 
+                href="/blog/search?q=${encodeURIComponent(query)}&sort=newest"
+                class="${sortParam === 'newest' ? 'sort-option active' : 'sort-option'}"
+              >
+                Newest
+              </a>
+              <a 
+                href="/blog/search?q=${encodeURIComponent(query)}&sort=oldest"
+                class="${sortParam === 'oldest' ? 'sort-option active' : 'sort-option'}"
+              >
+                Oldest
+              </a>
+            </div>
+          `;
+        }
+        
+        // Display results
+        const resultsContainer = document.getElementById('search-results');
+        resultsContainer.innerHTML = '';
+        
+        if (results.length === 0) {
+          resultsContainer.innerHTML = `
+            <div class="empty-message">
+              <p>No results found for "${query}". Try a different search term.</p>
+              <a href="/blog" class="return-link">Return to all blog posts</a>
+            </div>
+          `;
+          return;
+        }
+        
+        // Add each result to the container
+        results.forEach(post => {
+          const postEl = document.createElement('article');
+          postEl.className = 'post-card';
+          
+          // Create tags HTML
+          const tagsHtml = post.tags && post.tags.length
+            ? `<div class="post-tags">
+                ${post.tags.map(tag => 
+                  `<a href="/blog/tag/${tag}" class="post-tag">${tag}</a>`
+                ).join('')}
+               </div>`
+            : '';
+          
+          // Format date
+          const date = new Date(post.date);
+          const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+          
+          // Highlight matching text
+          const highlightedTitle = highlightText(post.title, normalizedTerm);
+          const highlightedDescription = highlightText(post.description, normalizedTerm);
+          
+          postEl.innerHTML = `
+            <a href="${post.url}">
+              <div class="post-image">
+                ${post.image ? `<img width="720" height="360" src="${post.image}" alt="">` : ''}
+              </div>
+              <div class="post-content">
+                <h3 class="post-title">${highlightedTitle}</h3>
+                <div class="post-meta">
+                  <time datetime="${post.date}">${formattedDate}</time>
+                  ${tagsHtml}
+                </div>
+                <p class="post-excerpt">${highlightedDescription}</p>
+              </div>
+            </a>
+          `;
+          
+          resultsContainer.appendChild(postEl);
         });
       }
       
-      // Highlight search terms in text
-      function highlightText(text, searchTerm) {
-        if (!searchTerm) return text;
-        
-        const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<span class="highlight">$1</span>');
-      }
-      
-      // Calculate search result relevance (higher = more relevant)
-      function getRelevanceScore(post, searchTerm) {
-        if (!searchTerm) return 0;
-        
+      // Helper function to calculate relevance score
+      function getRelevanceScore(post, searchTerm, isExactMatch) {
         let score = 0;
-        const title = post.title.toLowerCase();
-        const description = post.description.toLowerCase();
-        const content = post.body.toLowerCase();
-        const tags = post.tags || [];
         
-        // Title matches are most important
-        if (title.includes(searchTerm)) {
+        // Title matches (highest priority)
+        if (post.title.toLowerCase().includes(searchTerm)) {
           score += 10;
-          // Exact title match or starts with query get bonus points
-          if (title === searchTerm) score += 5;
-          if (title.startsWith(searchTerm)) score += 3;
+          
+          // Exact matches or starts with query get bonus
+          if (post.title.toLowerCase() === searchTerm) score += 5;
+          if (post.title.toLowerCase().startsWith(searchTerm)) score += 3;
         }
         
         // Description matches
-        if (description.includes(searchTerm)) {
+        if (post.description.toLowerCase().includes(searchTerm)) {
           score += 5;
         }
         
-        // Content matches
-        if (content.includes(searchTerm)) {
-          score += 3;
-          // Count occurrences for additional relevance
-          try {
-            const occurrences = (content.match(new RegExp(searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g')) || []).length;
-            score += Math.min(occurrences / 3, 3); // Cap at 3 extra points
-          } catch (e) {
-            // Skip if regex fails
+        // Tag matches
+        if (post.tags && post.tags.some(tag => tag.toLowerCase().includes(searchTerm))) {
+          score += 4;
+          // Exact tag match gets extra points
+          if (post.tags.some(tag => tag.toLowerCase() === searchTerm)) {
+            score += 2;
           }
         }
         
-        // Tag matches
-        if (tags.some(tag => tag.toLowerCase().includes(searchTerm))) {
-          score += 4;
-          // Exact tag match gets bonus
-          if (tags.some(tag => tag.toLowerCase() === searchTerm)) {
-            score += 2;
+        // Content matches
+        if (post.body.toLowerCase().includes(searchTerm)) {
+          score += 3;
+        }
+        
+        // Exact match bonus (for quoted searches)
+        if (isExactMatch) {
+          if (post.title.toLowerCase().includes(searchTerm) || 
+              post.description.toLowerCase().includes(searchTerm) ||
+              post.body.toLowerCase().includes(searchTerm)) {
+            score += 5;
           }
         }
         
         return score;
       }
       
-      // Perform the search
-      function performSearch(term, sortOpt) {
-        term = term.trim().toLowerCase();
+      // Helper function to highlight matched text
+      function highlightText(text, searchTerm) {
+        if (!searchTerm) return text;
         
-        // Empty query handling
-        if (!term) {
-          resultsContainer.innerHTML = `
-            <div class="empty-message">
-              <p>Enter a search term above to find blog posts.</p>
-              <a href="/blog" class="return-link">View all blog posts</a>
-            </div>
-          `;
-          return;
-        }
-        
-        // Filter posts based on search term
-        const results = posts.filter(post => 
-          post.title.toLowerCase().includes(term) ||
-          post.description.toLowerCase().includes(term) ||
-          post.body.toLowerCase().includes(term) ||
-          post.tags.some(tag => tag.toLowerCase().includes(term))
-        );
-        
-        // Sort results
-        if (results.length > 0) {
-          if (term) {
-            // First sort by relevance
-            results.sort((a, b) => {
-              const scoreA = getRelevanceScore(a, term);
-              const scoreB = getRelevanceScore(b, term);
-              
-              // If scores are tied, sort by date
-              if (scoreB === scoreA) {
-                if (sortOpt === 'oldest') {
-                  return new Date(a.date) - new Date(b.date);
-                }
-                return new Date(b.date) - new Date(a.date);
-              }
-              
-              return scoreB - scoreA;
-            });
-          } else {
-            // Sort by date only
-            results.sort((a, b) => {
-              if (sortOpt === 'oldest') {
-                return new Date(a.date) - new Date(b.date);
-              }
-              return new Date(b.date) - new Date(a.date);
-            });
-          }
-        }
-        
-        // Update results count
-        const header = document.querySelector('.blog-description');
-        if (header) {
-          header.textContent = `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
-        } else {
-          // Create the description element if it doesn't exist
-          const headerEl = document.querySelector('.blog-header');
-          if (headerEl) {
-            const desc = document.createElement('p');
-            desc.className = 'blog-description';
-            desc.textContent = `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
-            headerEl.appendChild(desc);
-          }
-        }
-        
-        // Show results or no results message
-        if (results.length > 0) {
-          resultsContainer.innerHTML = '';
-          
-          results.forEach(post => {
-            // Create tags HTML
-            const tagsHtml = post.tags.length > 0 
-              ? `<div class="post-tags">
-                  ${post.tags.map(tag => `<a href="/blog/tag/${tag}" class="post-tag">${tag}</a>`).join('')}
-                </div>`
-              : '';
-            
-            // Highlight matching content
-            const title = highlightText(post.title, term);
-            const description = highlightText(post.description, term);
-            
-            // Create post card
-            const card = document.createElement('article');
-            card.className = 'post-card';
-            card.innerHTML = `
-              <a href="${post.url}">
-                <div class="post-image">
-                  ${post.image ? `<img width="720" height="360" src="${post.image}" alt="">` : ''}
-                </div>
-                <div class="post-content">
-                  <h3 class="post-title">${title}</h3>
-                  <div class="post-meta">
-                    <time datetime="${post.date}">${formatDate(post.date)}</time>
-                    ${tagsHtml}
-                  </div>
-                  <p class="post-excerpt">${description}</p>
-                </div>
-              </a>
-            `;
-            
-            resultsContainer.appendChild(card);
-          });
-          
-          // Add post card styles if needed
-          if (!document.getElementById('post-card-styles')) {
-            const style = document.createElement('style');
-            style.id = 'post-card-styles';
-            style.textContent = `
-              .post-card {
-                margin-bottom: 2rem;
-                border-radius: 8px;
-                overflow: hidden;
-                background-color: var(--card-bg);
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-              }
-              
-              .post-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-              }
-              
-              .post-card a {
-                display: block;
-                text-decoration: none;
-                color: inherit;
-              }
-              
-              .post-image {
-                overflow: hidden;
-                position: relative;
-                padding-top: 56.25%; /* 16:9 aspect ratio */
-              }
-              
-              .post-image img {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                transition: transform 0.3s ease;
-              }
-              
-              .post-card:hover .post-image img {
-                transform: scale(1.05);
-              }
-              
-              .post-content {
-                padding: 1.5rem;
-                display: flex;
-                flex-direction: column;
-                height: 280px; /* Fixed height for content section */
-              }
-              
-              .post-title {
-                margin: 0 0 0.5rem 0;
-                font-size: 1.5rem;
-                color: var(--heading-color);
-                line-height: 1.3;
-              }
-              
-              .post-meta {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 1rem;
-                margin-bottom: 1rem;
-                font-size: 0.875rem;
-                color: var(--text-color);
-                opacity: 0.8;
-              }
-              
-              .post-tags {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              }
-              
-              .post-tag {
-                display: inline-block;
-                padding: 0.2rem 0.5rem;
-                border-radius: 3px;
-                background-color: var(--accent-light);
-                color: var(--text-color);
-                font-size: 0.75rem;
-                text-decoration: none;
-                transition: background-color 0.2s ease, color 0.2s ease;
-              }
-              
-              .post-tag:hover {
-                background-color: var(--accent);
-                color: white;
-              }
-              
-              .post-excerpt {
-                margin: 0;
-                color: var(--text-color);
-                font-size: 0.95rem;
-                line-height: 1.6;
-                flex-grow: 1;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: -webkit-box;
-                -webkit-line-clamp: 4;
-                -webkit-box-orient: vertical;
-              }
-            `;
-            document.head.appendChild(style);
-          }
-          
-        } else {
-          resultsContainer.innerHTML = `
-            <div class="empty-message">
-              <p>No results found for "${term}". Try a different search term.</p>
-              <a href="/blog" class="return-link">Return to all blog posts</a>
-            </div>
-          `;
+        try {
+          // Escape special regex characters
+          const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedTerm})`, 'gi');
+          return text.replace(regex, '<span class="highlight">$1</span>');
+        } catch (e) {
+          console.error('Error highlighting text:', e);
+          return text;
         }
       }
-      
-      // Initialize search based on URL parameters
-      document.addEventListener('DOMContentLoaded', () => {
-        // Perform the search using the query and sort from URL
-        performSearch(searchTerm, sortParam);
-        
-        // Update search input field to show the current query
-        if (searchInput && query) {
-          searchInput.value = query;
-        }
-      });
-    </script>
-  </body>
+    });
+  </script>
+  
+  <script define:vars={{ postsData }}>
+    // Make post data available to the client-side search function
+    window.blogPostsData = postsData;
+  </script>
+</body>
 </html>

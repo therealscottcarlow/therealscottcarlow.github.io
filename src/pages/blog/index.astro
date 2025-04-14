@@ -122,31 +122,6 @@ const sortedPosts = [...allPosts].sort((a, b) => {
 				<p class="blog-description">Thoughts, stories, and ideas about web development and technology.</p>
 			</div>
 
-			{/* Emergency direct search form */}
-			<div style="margin: 1rem 0; padding: 1rem; background-color: var(--accent-light); border-radius: 8px;">
-				<h3 style="margin-bottom: 0.5rem;">Emergency Direct Search Form</h3>
-				<form action="/blog/simple-search" method="get" style="display: flex; gap: 10px;">
-					<input 
-						type="text" 
-						name="q" 
-						placeholder="Type search term here..." 
-						style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);"
-					/>
-					<button type="submit" style="padding: 0.5rem 1rem; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">
-						Search
-					</button>
-				</form>
-				<p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.8;">Using our alternative search page that avoids potential issues</p>
-				<div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 1rem;">
-					<a href="/blog/basic-search" style="color: var(--accent);">Ultra Basic Search</a>
-					<a href="/blog/search-mini" style="color: var(--accent);">Minimal Search</a>
-					<a href="/blog/pure-html-search.html" style="color: var(--accent);">Pure HTML Form</a>
-					<a href="/blog/raw-search" style="color: var(--accent);">Raw URL Test</a>
-					<a href="/blog/direct-node-test?q=test" style="color: var(--accent);">Direct Node Test</a>
-					<a href="/blog/client-search?q=test" style="color: var(--accent);">Client-side Search</a>
-				</div>
-			</div>
-
 			<div class="filters-wrapper">
 				<SearchBar />
 				<TagList tags={allTags} />

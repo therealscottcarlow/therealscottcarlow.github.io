@@ -7,8 +7,8 @@ const { query = '' } = Astro.props;
 ---
 
 <div class="search-container">
-  <!-- Use the simple search page instead of the regular search -->
-  <form action="/blog/simple-search" method="get" class="search-form">
+  <!-- Regular search form -->
+  <form action="/blog/search" method="get" class="search-form">
     <input 
       type="text" 
       name="q" 

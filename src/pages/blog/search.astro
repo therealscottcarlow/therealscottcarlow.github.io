@@ -11,388 +11,495 @@ import PostCard from '../../components/PostCard.astro';
 import { SITE_TITLE } from '../../consts';
 import { getCollection } from 'astro:content';
 
-// Get search query
+// Get search query from URL parameters
 const query = Astro.url.searchParams.get('q') || '';
-const trimmedQuery = query.trim();
-
-// Debug the query parameter
-console.log('Search query received:', query);
-console.log('URL params:', JSON.stringify(Object.fromEntries(Astro.url.searchParams)));
-
-// Only redirect if query is explicitly empty
-if (query === null || trimmedQuery === '') {
-  console.log('Empty query, redirecting to blog index');
-  return Astro.redirect('/blog');
-}
-
-// Get all blog posts
-const allPosts = await getCollection('blog');
-
-// Extract all tags from posts
-const allTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
+const searchTerm = query.trim().toLowerCase();
 
 // Get sort parameter (default to newest first)
 const sortParam = Astro.url.searchParams.get('sort') || 'newest';
 
-// Process query to handle exact matches (text in quotes)
-let isExactMatch = false;
-let searchTerms = trimmedQuery.toLowerCase();
+// Get all blog posts
+const allPosts = await getCollection('blog');
 
-// Check if query is wrapped in quotes for exact matching
-if (
-  (trimmedQuery.startsWith('"') && trimmedQuery.endsWith('"')) || 
-  (trimmedQuery.startsWith("'") && trimmedQuery.endsWith("'"))
-) {
-  isExactMatch = true;
-  // Remove the quotes for searching
-  searchTerms = trimmedQuery.slice(1, -1).toLowerCase();
-}
+// Extract all tags from posts for the tag filter
+const allTags = [...new Set(allPosts.flatMap(post => post.data.tags || []))];
 
-console.log(`Search mode: ${isExactMatch ? 'Exact match' : 'Partial match'}`);
-console.log(`Searching for: "${searchTerms}"`);
-console.log(`Total posts to search: ${allPosts.length}`);
-
-// Search in title, description, tags and content
-let searchResults = allPosts;
-
-if (searchTerms) {
-  searchResults = allPosts.filter(post => {
-    // Prepare content for searching
-    const title = post.data.title?.toLowerCase() || '';
-    const description = post.data.description?.toLowerCase() || '';
-    const content = post.body?.toLowerCase() || '';
-    const tags = post.data.tags || [];
-    
-    // Different matching logic based on exact vs partial
-    let titleMatch = false;
-    let descriptionMatch = false;
-    let contentMatch = false;
-    let tagMatch = false;
-    
-    if (isExactMatch) {
-      // Exact match mode (case insensitive)
-      titleMatch = title.includes(searchTerms);
-      descriptionMatch = description.includes(searchTerms);
-      contentMatch = content.includes(searchTerms);
-      tagMatch = tags.some(tag => tag.toLowerCase() === searchTerms);
-    } else {
-      // Partial match mode
-      titleMatch = title.includes(searchTerms);
-      descriptionMatch = description.includes(searchTerms);
-      contentMatch = content.includes(searchTerms);
-      tagMatch = tags.some(tag => tag.toLowerCase().includes(searchTerms));
-    }
-    
-    return titleMatch || descriptionMatch || contentMatch || tagMatch;
-  });
-  
-  console.log(`Search results found: ${searchResults.length}`);
-}
-
-// Function to calculate relevance score (higher = more relevant)
-function getRelevanceScore(post, searchTerm, isExact) {
-  let score = 0;
-  
-  // Safely get content with fallbacks
-  const title = post.data.title?.toLowerCase() || '';
-  const description = post.data.description?.toLowerCase() || '';
-  const content = post.body?.toLowerCase() || '';
-  const tags = post.data.tags || [];
-  
-  // Title matches are most important
-  if (title.includes(searchTerm)) {
-    score += 10;
-    
-    // Exact title match or starts with query get bonus points
-    if (title === searchTerm) score += 5;
-    if (title.startsWith(searchTerm)) score += 3;
-    
-    // Word boundary match bonus (matches whole words)
-    const wordBoundaryRegex = new RegExp(`\\b${searchTerm}\\b`, 'i');
-    if (wordBoundaryRegex.test(title)) score += 2;
-  }
-  
-  // Description matches
-  if (description.includes(searchTerm)) {
-    score += 5;
-    
-    // Word boundary match in description
-    const wordBoundaryRegex = new RegExp(`\\b${searchTerm}\\b`, 'i');
-    if (wordBoundaryRegex.test(description)) score += 1;
-  }
-  
-  // Content matches
-  if (content.includes(searchTerm)) {
-    score += 3;
-    
-    try {
-      // Count occurrences in body for additional relevance
-      const occurrences = (content.match(new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-      score += Math.min(occurrences / 3, 3); // Cap at 3 extra points
-      
-      // Word boundary match in content
-      const wordBoundaryRegex = new RegExp(`\\b${searchTerm}\\b`, 'i');
-      if (wordBoundaryRegex.test(content)) score += 1;
-    } catch (e) {
-      // Skip if regex fails (e.g., due to special characters)
-      console.error("Error in regex counting:", e);
-    }
-  }
-  
-  // Tag matches
-  const hasTagMatch = tags.some(tag => tag.toLowerCase().includes(searchTerm));
-  if (hasTagMatch) {
-    score += 4;
-    
-    // Exact tag match gets bonus
-    if (tags.some(tag => tag.toLowerCase() === searchTerm)) {
-      score += 2;
-    }
-  }
-  
-  // Recency bonus (within last 6 months)
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  if (post.data.pubDate > sixMonthsAgo) {
-    score += 1;
-  }
-  
-  // Exact match bonus if in exact match mode
-  if (isExact) {
-    if (title === searchTerm || 
-        description === searchTerm || 
-        tags.some(tag => tag.toLowerCase() === searchTerm)) {
-      score += 5;
-    }
-  }
-  
-  return score;
-}
-
-// Sort results by relevance first, then by date
-let sortedResults = [...searchResults];
-
-if (searchTerms) {
-  // If there's a query, first sort by relevance score
-  sortedResults.sort((a, b) => {
-    const scoreA = getRelevanceScore(a, searchTerms, isExactMatch);
-    const scoreB = getRelevanceScore(b, searchTerms, isExactMatch);
-    
-    // If scores are tied, use secondary sort by date
-    if (scoreB === scoreA) {
-      return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
-    }
-    
-    return scoreB - scoreA;
-  });
-  
-  // If there's also a sort parameter and it's not the default,
-  // apply the date sort to results with the same relevance score
-  if (sortParam === 'oldest') {
-    // Group results by score first
-    const scoreGroups = {};
-    sortedResults.forEach(post => {
-      const score = getRelevanceScore(post, searchTerms, isExactMatch);
-      if (!scoreGroups[score]) scoreGroups[score] = [];
-      scoreGroups[score].push(post);
-    });
-    
-    // Sort each group by date
-    Object.keys(scoreGroups).forEach(score => {
-      scoreGroups[score].sort((a, b) => {
-        return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
-      });
-    });
-    
-    // Flatten back to a single array, maintaining score order
-    sortedResults = Object.keys(scoreGroups)
-      .sort((a, b) => Number(b) - Number(a))
-      .flatMap(score => scoreGroups[score]);
-  }
-} else {
-  // If no query, sort purely by date
-  sortedResults.sort((a, b) => {
-    if (sortParam === 'oldest') {
-      return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
-    }
-    return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
-  });
-}
+// Transform posts to a simplified format for client-side use
+const postsForClient = allPosts.map(post => ({
+  id: post.id,
+  title: post.data.title,
+  description: post.data.description,
+  date: post.data.pubDate.toISOString(),
+  tags: post.data.tags || [],
+  body: post.body,
+  url: `/blog/${post.id}/`,
+  image: post.data.heroImage
+}));
 ---
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead 
-			title={query ? `Search results for "${query}" | ${SITE_TITLE}` : `Search Blog | ${SITE_TITLE}`} 
-			description={query ? `Search results for ${query} in the blog` : "Search our blog posts"} 
-		/>
-		<style>
-			/* Global styles to prevent horizontal scrolling */
-            html, body {
-                overflow-x: hidden;
-                max-width: 100%;
-            }
+  <head>
+    <BaseHead 
+      title={query ? `Search results for "${query}" | ${SITE_TITLE}` : `Search Blog | ${SITE_TITLE}`} 
+      description={query ? `Search results for ${query} in the blog` : "Search our blog posts"}
+    />
+    <style>
+      /* Global styles to prevent horizontal scrolling */
+      html, body {
+        overflow-x: hidden;
+        max-width: 100%;
+      }
+      
+      .blog-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1em;
+        box-sizing: border-box;
+      }
+      
+      @media (min-width: 768px) {
+        .blog-container {
+          padding: 1em 2em;
+        }
+      }
+      
+      @media (min-width: 1600px) {
+        .blog-container {
+          max-width: 1600px;
+        }
+      }
+      
+      .blog-header {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      
+      .blog-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .search-term {
+        color: var(--accent);
+      }
+      
+      .blog-description {
+        color: var(--text-color);
+        opacity: 0.8;
+        font-size: 1.1rem;
+      }
+      
+      .filters-wrapper {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+      }
+      
+      .blog-posts-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .empty-message {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-color);
+        opacity: 0.7;
+      }
+      
+      .return-link {
+        display: inline-block;
+        margin-top: 1rem;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+      
+      .return-link:hover {
+        background-color: var(--accent);
+        color: white;
+        transform: translateY(-2px);
+      }
+      
+      /* Responsive grid that adjusts based on viewport width */
+      @media (min-width: 640px) {
+        .blog-posts-list {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.5rem;
+        }
+      }
+      
+      @media (min-width: 1024px) {
+        .blog-posts-list {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 2rem;
+        }
+      }
+      
+      @media (min-width: 1440px) {
+        .blog-posts-list {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      
+      @media (min-width: 1800px) {
+        .blog-posts-list {
+          grid-template-columns: repeat(5, 1fr);
+        }
+      }
+      
+      .highlight {
+        background-color: var(--accent-light);
+        color: var(--text-color);
+        padding: 0 2px;
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main class="blog-container">
+      <div class="blog-header">
+        {query ? (
+          <h1>Search results for <span class="search-term">"{query}"</span></h1>
+        ) : (
+          <h1>Search Blog Posts</h1>
+        )}
+      </div>
+
+      <div class="filters-wrapper">
+        <SearchBar query={query} />
+        <TagList tags={allTags} />
+        {query && (
+          <SortControl 
+            currentSort={sortParam as 'newest' | 'oldest'} 
+            baseUrl="/blog/search"
+            preserveParams={true}
+            query={query}
+          />
+        )}
+      </div>
+
+      <div id="search-results" class="blog-posts-list">
+        <!-- Results will be populated by client-side JavaScript -->
+      </div>
+    </main>
+    <Footer />
+    <ThemeStatus />
+    
+    <script define:vars={{ postsForClient, query, searchTerm, sortParam }}>
+      // All blog posts data is available here
+      const posts = postsForClient;
+      const searchInput = document.querySelector('.search-input');
+      const resultsContainer = document.getElementById('search-results');
+      
+      // Format date helper
+      function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+      
+      // Highlight search terms in text
+      function highlightText(text, searchTerm) {
+        if (!searchTerm) return text;
+        
+        const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+      }
+      
+      // Calculate search result relevance (higher = more relevant)
+      function getRelevanceScore(post, searchTerm) {
+        if (!searchTerm) return 0;
+        
+        let score = 0;
+        const title = post.title.toLowerCase();
+        const description = post.description.toLowerCase();
+        const content = post.body.toLowerCase();
+        const tags = post.tags || [];
+        
+        // Title matches are most important
+        if (title.includes(searchTerm)) {
+          score += 10;
+          // Exact title match or starts with query get bonus points
+          if (title === searchTerm) score += 5;
+          if (title.startsWith(searchTerm)) score += 3;
+        }
+        
+        // Description matches
+        if (description.includes(searchTerm)) {
+          score += 5;
+        }
+        
+        // Content matches
+        if (content.includes(searchTerm)) {
+          score += 3;
+          // Count occurrences for additional relevance
+          try {
+            const occurrences = (content.match(new RegExp(searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g')) || []).length;
+            score += Math.min(occurrences / 3, 3); // Cap at 3 extra points
+          } catch (e) {
+            // Skip if regex fails
+          }
+        }
+        
+        // Tag matches
+        if (tags.some(tag => tag.toLowerCase().includes(searchTerm))) {
+          score += 4;
+          // Exact tag match gets bonus
+          if (tags.some(tag => tag.toLowerCase() === searchTerm)) {
+            score += 2;
+          }
+        }
+        
+        return score;
+      }
+      
+      // Perform the search
+      function performSearch(term, sortOpt) {
+        term = term.trim().toLowerCase();
+        
+        // Empty query handling
+        if (!term) {
+          resultsContainer.innerHTML = `
+            <div class="empty-message">
+              <p>Enter a search term above to find blog posts.</p>
+              <a href="/blog" class="return-link">View all blog posts</a>
+            </div>
+          `;
+          return;
+        }
+        
+        // Filter posts based on search term
+        const results = posts.filter(post => 
+          post.title.toLowerCase().includes(term) ||
+          post.description.toLowerCase().includes(term) ||
+          post.body.toLowerCase().includes(term) ||
+          post.tags.some(tag => tag.toLowerCase().includes(term))
+        );
+        
+        // Sort results
+        if (results.length > 0) {
+          if (term) {
+            // First sort by relevance
+            results.sort((a, b) => {
+              const scoreA = getRelevanceScore(a, term);
+              const scoreB = getRelevanceScore(b, term);
+              
+              // If scores are tied, sort by date
+              if (scoreB === scoreA) {
+                if (sortOpt === 'oldest') {
+                  return new Date(a.date) - new Date(b.date);
+                }
+                return new Date(b.date) - new Date(a.date);
+              }
+              
+              return scoreB - scoreA;
+            });
+          } else {
+            // Sort by date only
+            results.sort((a, b) => {
+              if (sortOpt === 'oldest') {
+                return new Date(a.date) - new Date(b.date);
+              }
+              return new Date(b.date) - new Date(a.date);
+            });
+          }
+        }
+        
+        // Update results count
+        const header = document.querySelector('.blog-description');
+        if (header) {
+          header.textContent = `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
+        } else {
+          // Create the description element if it doesn't exist
+          const headerEl = document.querySelector('.blog-header');
+          if (headerEl) {
+            const desc = document.createElement('p');
+            desc.className = 'blog-description';
+            desc.textContent = `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
+            headerEl.appendChild(desc);
+          }
+        }
+        
+        // Show results or no results message
+        if (results.length > 0) {
+          resultsContainer.innerHTML = '';
+          
+          results.forEach(post => {
+            // Create tags HTML
+            const tagsHtml = post.tags.length > 0 
+              ? `<div class="post-tags">
+                  ${post.tags.map(tag => `<a href="/blog/tag/${tag}" class="post-tag">${tag}</a>`).join('')}
+                </div>`
+              : '';
             
-			.blog-container {
-				width: 100%;
-				max-width: 1400px;
-				margin: 0 auto;
-				padding: 1em;
-				box-sizing: border-box;
-			}
-			
-			@media (min-width: 768px) {
-				.blog-container {
-					padding: 1em 2em;
-				}
-			}
-			
-			@media (min-width: 1600px) {
-				.blog-container {
-					max-width: 1600px;
-				}
-			}
-			
-			.blog-header {
-				margin-bottom: 2rem;
-				text-align: center;
-			}
-			.blog-header h1 {
-				font-size: 2.5rem;
-				margin-bottom: 0.5rem;
-			}
-			.search-term {
-				color: var(--accent);
-			}
-			.blog-description {
-				color: var(--text-color);
-				opacity: 0.8;
-				font-size: 1.1rem;
-			}
-			.filters-wrapper {
-				display: flex;
-				flex-direction: column;
-				margin-bottom: 2rem;
-				border-bottom: 1px solid var(--border-color);
-				padding-bottom: 1rem;
-			}
-			.blog-posts-list {
-				display: grid;
-				grid-template-columns: 1fr;
-				gap: 1rem;
-			}
-			.empty-message {
-				text-align: center;
-				padding: 2rem;
-				color: var(--text-color);
-				opacity: 0.7;
-			}
-			
-			/* Responsive grid that adjusts based on viewport width */
-			@media (min-width: 640px) {
-				.blog-posts-list {
-					grid-template-columns: repeat(2, 1fr);
-                    gap: 1.5rem;
-				}
-			}
-			
-			@media (min-width: 1024px) {
-				.blog-posts-list {
-					grid-template-columns: repeat(3, 1fr);
-                    gap: 2rem;
-				}
-			}
-			
-			@media (min-width: 1440px) {
-				.blog-posts-list {
-					grid-template-columns: repeat(4, 1fr);
-				}
-			}
-			
-			@media (min-width: 1800px) {
-				.blog-posts-list {
-					grid-template-columns: repeat(5, 1fr);
-				}
-			}
-			
-			.return-link {
-				display: inline-block;
-				margin-top: 1rem;
-				color: var(--accent);
-				text-decoration: none;
-				font-weight: 500;
-				padding: 0.5rem 1rem;
-				border: 1px solid var(--accent);
-				border-radius: 4px;
-				transition: all 0.2s ease;
-			}
-			
-			.return-link:hover {
-				background-color: var(--accent);
-				color: white;
-				transform: translateY(-2px);
-			}
-		</style>
-	</head>
-	<body>
-		<Header />
-		<main class="blog-container">
-			{/* Debug Search Form - This is a direct HTML form for testing */}
-			<div style="padding: 20px; margin-bottom: 20px; background-color: var(--accent-light); border-radius: 8px;" class="debug-search">
-				<p style="margin-bottom: 10px; font-weight: bold;">Debug Search (if regular search isn't working)</p>
-				<form action="/blog/search" method="get" style="display: flex; gap: 10px;">
-					<input type="text" name="q" value={Astro.url.searchParams.get('q') || ''} style="flex: 1; padding: 8px;" />
-					<button type="submit" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px;">Search</button>
-				</form>
-			</div>
-			
-			<div class="blog-header">
-				{query ? (
-					<h1>Search results for <span class="search-term">"{query}"</span></h1>
-				) : (
-					<h1>Search Blog Posts</h1>
-				)}
-				
-				{query && (
-					<p class="blog-description">
-						Found {sortedResults.length} result{sortedResults.length === 1 ? '' : 's'}
-					</p>
-				)}
-			</div>
-
-			<div class="filters-wrapper">
-				<SearchBar query={Astro.url.searchParams.get('q') || ''} />
-				<TagList tags={allTags} />
-				{query && sortedResults.length > 0 && (
-					<SortControl 
-						currentSort={sortParam as 'newest' | 'oldest'} 
-						baseUrl="/blog/search"
-						preserveParams={true}
-						query={query}
-					/>
-				)}
-			</div>
-
-			<div class="blog-posts-list">
-				{query && sortedResults.length > 0 ? (
-					sortedResults.map((post) => (
-						<PostCard post={post} highlight={searchTerms} />
-					))
-				) : query ? (
-					<div class="empty-message">
-						<p>No results found for "{query}". Try a different search term.</p>
-						<a href="/blog" class="return-link">Return to all blog posts</a>
-					</div>
-				) : (
-					<div class="empty-message">
-						<p>Enter a search term above to find blog posts.</p>
-						<a href="/blog" class="return-link">View all blog posts</a>
-					</div>
-				)}
-			</div>
-		</main>
-		<Footer />
-		<ThemeStatus />
-	</body>
+            // Highlight matching content
+            const title = highlightText(post.title, term);
+            const description = highlightText(post.description, term);
+            
+            // Create post card
+            const card = document.createElement('article');
+            card.className = 'post-card';
+            card.innerHTML = `
+              <a href="${post.url}">
+                <div class="post-image">
+                  ${post.image ? `<img width="720" height="360" src="${post.image}" alt="">` : ''}
+                </div>
+                <div class="post-content">
+                  <h3 class="post-title">${title}</h3>
+                  <div class="post-meta">
+                    <time datetime="${post.date}">${formatDate(post.date)}</time>
+                    ${tagsHtml}
+                  </div>
+                  <p class="post-excerpt">${description}</p>
+                </div>
+              </a>
+            `;
+            
+            resultsContainer.appendChild(card);
+          });
+          
+          // Add post card styles if needed
+          if (!document.getElementById('post-card-styles')) {
+            const style = document.createElement('style');
+            style.id = 'post-card-styles';
+            style.textContent = `
+              .post-card {
+                margin-bottom: 2rem;
+                border-radius: 8px;
+                overflow: hidden;
+                background-color: var(--card-bg);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+              }
+              
+              .post-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+              }
+              
+              .post-card a {
+                display: block;
+                text-decoration: none;
+                color: inherit;
+              }
+              
+              .post-image {
+                overflow: hidden;
+                position: relative;
+                padding-top: 56.25%; /* 16:9 aspect ratio */
+              }
+              
+              .post-image img {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.3s ease;
+              }
+              
+              .post-card:hover .post-image img {
+                transform: scale(1.05);
+              }
+              
+              .post-content {
+                padding: 1.5rem;
+                display: flex;
+                flex-direction: column;
+                height: 280px; /* Fixed height for content section */
+              }
+              
+              .post-title {
+                margin: 0 0 0.5rem 0;
+                font-size: 1.5rem;
+                color: var(--heading-color);
+                line-height: 1.3;
+              }
+              
+              .post-meta {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+                font-size: 0.875rem;
+                color: var(--text-color);
+                opacity: 0.8;
+              }
+              
+              .post-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+              }
+              
+              .post-tag {
+                display: inline-block;
+                padding: 0.2rem 0.5rem;
+                border-radius: 3px;
+                background-color: var(--accent-light);
+                color: var(--text-color);
+                font-size: 0.75rem;
+                text-decoration: none;
+                transition: background-color 0.2s ease, color 0.2s ease;
+              }
+              
+              .post-tag:hover {
+                background-color: var(--accent);
+                color: white;
+              }
+              
+              .post-excerpt {
+                margin: 0;
+                color: var(--text-color);
+                font-size: 0.95rem;
+                line-height: 1.6;
+                flex-grow: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+              }
+            `;
+            document.head.appendChild(style);
+          }
+          
+        } else {
+          resultsContainer.innerHTML = `
+            <div class="empty-message">
+              <p>No results found for "${term}". Try a different search term.</p>
+              <a href="/blog" class="return-link">Return to all blog posts</a>
+            </div>
+          `;
+        }
+      }
+      
+      // Initialize search based on URL parameters
+      document.addEventListener('DOMContentLoaded', () => {
+        // Perform the search using the query and sort from URL
+        performSearch(searchTerm, sortParam);
+        
+        // Update search input field to show the current query
+        if (searchInput && query) {
+          searchInput.value = query;
+        }
+      });
+    </script>
+  </body>
 </html>
